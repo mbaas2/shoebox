@@ -12,30 +12,36 @@
 
     (⎕IO ⎕ML ⎕WX)←1 1 3
 
-    ∇ mat←LeseDB name;txt;vec
-        txt←leseDatei name     ⍝ Textdatei einlesen...
+    ∇ mat←LeseDB name;txt;vec;vier;z
+      txt←leseDatei name     ⍝ Textdatei einlesen...
       ⍝ eingelesenen vektor umwandeln in zeilenweise nested vectors
-        vec←{(1,1↓⍵=⎕UCS 10)⊂⍵}txt~⎕UCS 13
+      vec←{(1,1↓⍵=⎕UCS 10)⊂⍵}txt~⎕UCS 13
       ⍝ entferneZeilenvorschub aus den einzelnen Vektoren sowie leere Elemente aus dem Gesamtvektor
-        vec←(vec~¨⎕UCS 10)~⊂''
+      vec←(vec~¨⎕UCS 10)~⊂''
+      vier←4↑¨vec
+      z←vier∊'\le ' '\me '
+      vec←z/vec
+     
       ⍝ erzeuge zweispaltige Tabelle und entferne "\le " bzw. "\me "-Präfixe
       ⍝ vereinfachende Annahme: es gibt immer nur eine le und me-Zeile und die beiden folgen einander
-        mat←{4↓¨(⌽2,0.5×⍴⍵)⍴⍵}vec
+      mat←{4↓¨(⌽2,0.5×⍴⍵)⍴⍵}vec
+      ⍝ ; als Trennzeichen für Übersetzungsvarianten
+      mat[;2]←{0=⍴⍵:'' ⋄ {(+/∧\⍵∊'; ')↓⍵}¨(1,1↓⍵=';')⊂⍵}¨mat[;2]
     ∇
 
-    Translate←{
+      Translate←{
       ⍝ liefert Übersetzung für ⍵ aus Tabelle ⍺
       ⍝ Falls Begriff nicht gefunden gibt es Fehler - das ist aber erwünscht
-        ⍺[⍺[;1]⍳⊂⍵;2]
-    }
+          ⍺[⍺[;1]⍳⊂⍵;2]
+      }
 
-    hex←{⎕CT ⎕IO←0                          ⍝ Hexadecimal from decimal.
-        ⍺←⊢                                 ⍝ no width specification.
-        1≠≡,⍵:⍺ ∇¨⍵                         ⍝ simple-array-wise:
-        1∊⍵=1+⍵:'Too big'⎕SIGNAL 11         ⍝ loss of precision.
-        n←⍬⍴⍺,2*⌈2⍟2⌈16⍟1+⌈/|⍵              ⍝ default width.
-        ↓[0]'0123456789abcdef'[(n/16)⊤⍵]    ⍝ character hex numbers.
-    }
+      hex←{⎕CT ⎕IO←0                          ⍝ Hexadecimal from decimal.
+          ⍺←⊢                                 ⍝ no width specification.
+          1≠≡,⍵:⍺ ∇¨⍵                         ⍝ simple-array-wise:
+          1∊⍵=1+⍵:'Too big'⎕SIGNAL 11         ⍝ loss of precision.
+          n←⍬⍴⍺,2*⌈2⍟2⌈16⍟1+⌈/|⍵              ⍝ default width.
+          ↓[0]'0123456789abcdef'[(n/16)⊤⍵]    ⍝ character hex numbers.
+      }
 
     ∇ txt←leseDatei name;nu
       ⍝ Problem: ⎕NREAD schwächelt beim Einlesen von
@@ -44,10 +50,10 @@
       ⍝ externe Bibliothek, das ist aber eine zusätzliche
       ⍝ "Komplikationsstufe", die ich uns erstmal ersparen möchte.
       ⍝ Beim nächsten Treffen können wir die Funktion dann anpassen!
-
-        nu←name ⎕NTIE 0
-        txt←⎕NREAD nu,80,⎕NSIZE nu
-        ⎕NUNTIE nu
+     
+      nu←name ⎕NTIE 0
+      txt←⎕NREAD nu,80,⎕NSIZE nu
+      ⎕NUNTIE nu
     ∇
 
-:EndNamespace 
+:EndNamespace
