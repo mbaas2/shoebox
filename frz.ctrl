@@ -1,0 +1,11 @@
+\mbk -⍝ zusätzliches trennzeichen außer blank: "-"
+\aln mb tx Y bk 321  ⍝ erzeuge zeile mb zu zeile tx, ("Y": parsing!), suche im mfeld bk in dateien 3 2 1
+⍝ wird wort nicht gefunden, wird es im original übernommen (präfix *)
+
+\aln gl mb N me 21
+⍝ jetzt die erzeugten mb-zeilen bearbeiten! bei mehreren varianten rückfrage!
+
+
+\fn1 frz.u8 le me
+\fn2 frzsf.u8 le me
+\fn3 frzps.u8 fl bk
