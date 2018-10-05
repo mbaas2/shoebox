@@ -1,0 +1,50 @@
+\mbk -⍝ zusätzliches trennzeichen außer blank: "-"
+\ mb=morpheme break
+
+\aln mb tx Y bk 321  ⍝ erzeuge zeile mb zu zeile tx, ("Y": parsing!), gibt feld "bk" zurück wenn gefunden in dateien 3..2..1
+\aln gl mb  me 21
+
+⍝ IF WortGefunden
+⍝  return bk
+⍝ ELSEIF "Y" AND ~bk vorhanden
+⍝  return Wort
+⍝ ELSE  
+⍝   Dialog und Aktion...
+⍝ END
+⍝ 
+⍝ ↑↑↑ ist neue formulierung für ↓↓↓↓↓
+⍝
+⍝ wird wort zwar gefunden, aber kein dazugehöriges bk-Feld, dann wird es kopiert (fehlt "Y" entfällt Kopieren und es erfolgt Nachfrage wie folgt)
+⍝ andernfalls: wird es nicht gefunden, dialogfeld und möglichkeit zur eingabe. 
+ 
+
+⍝ jetzt die erzeugten mb-zeilen bearbeiten! bei mehreren varianten rückfrage!
+⍝ die jeweils angegebenen Dateien (hier 21) müssen GEMEINSAM betrachtet werden!
+
+⍝ fnX = Dateiname der Datei X 
+\fn1 ./frz.u8 
+\fn2 ./frzsf.u8 
+\fn3 ./frzps.u8 
+
+⍝ 3. Datei
+⍝ \fl maisons
+⍝ \bk maison-s
+⍝ 
+⍝ 2. Datei
+⍝ \le s
+⍝ \me PL(ural)
+⍝
+⍝ 1. Datei
+⍝ \le maison
+⍝ \me Haus
+⍝
+⍝
+⍝ Ablauf:
+⍝ \tx maisons
+⍝ (3. Datei)
+⍝ \mb maison-s
+⍝ (1. Datei)
+⍝ maison-> haus
+⍝ 2. Datei
+⍝ -s  -> PLural
+ 

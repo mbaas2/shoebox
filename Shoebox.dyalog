@@ -1,6 +1,6 @@
 ﻿:Namespace Shoebox
-⍝      DB←#.Shoebox.LeseDB'H:\GitHub\shoebox\frz.ctrl'
-⍝      DB gloss'H:\GitHub\shoebox\test.itx'
+⍝      DB←#.Shoebox.LeseDB'C:\GitHub\shoebox\.shsrc'
+⍝      DB gloss'C:\GitHub\shoebox\test.itx'
 
 
 ⍝ === VARIABLES ===
@@ -18,38 +18,93 @@
 
     ∇ DB←LeseDB name;txt;vec;vier;z;From;To;ref;j;mat;i;ctrl;AllIsWell
     ⍝ name=name der steuerdatei
-      ⎕CY'dfns'    ⍝ kopiere dfns-workspace
+      ⎕CY'dfns'    ⍝ kopiere dfns-workspace  (benötigt für dbx in "gloss")
       ctrl←1⊃⎕NGET name 1    ⍝ Textdatei einlesen...
+      dir←1⊃⎕NPARTS name     ⍝ merke quellverzeichnis
       AllIsWell←i←1
-      DB←⍬
+      DB←0 2⍴''
       :While AllIsWell
-          j←⍸(⊂'\fn',⍕i)≡¨4↑¨ctrl 
+          j←⍸(⊂'\fn',⍕i)≡¨4↑¨ctrl
           i+←1
           :If AllIsWell←×≢j
               ref←4↓j⊃ctrl  ⍝ dateiname from to
-              (ref From To)←1↓¨{(+\⍵=' ')⊆ ⍵}ref
-              vec←1⊃⎕NGET ref 1
+              (ref From)←1↓¨{(+\⍵=' ')⊆⍵}ref
+              vec←1⊃⎕NGET(dir,ref)1
+              vec←1↓vec  ⍝ simple: ignoriere erste zeile!
               vier←4↑¨vec
-              z←vier∊'\',¨From To,¨' '
-              vec←z/vec
-            ⍝ erzeuge zweispaltige Tabelle und entferne "\le " bzw. "\me "-Präfixe
-            ⍝ vereinfachende Annahme: es gibt immer nur eine le und me-Zeile und die beiden folgen einander
-              mat←{4↓¨(⌽2,0.5×⍴⍵)⍴⍵}vec
+              z←∊'\'=1↑¨vier
+              tags←∪('\\[_a-z]*\s+'⎕S'&')z/vier
+              mat←(0,≢tags)⍴''  ⍝ sätze x tags
+              :While 0<≢vec
+                  row←(≢tags)⍴''
+                  vec←(∨\0<≢¨vec)/vec ⍝ leerzeilen am dateianfangentfernen
+                  :While 0<≢1⊃vec
+                      zeile←1⊃vec
+                      typ←{(¯1+⍵⍳' ')↑⍵}zeile
+                      col←tags⍳⊂typ
+                      row[col]←⊂(1+⍴typ)↓zeile
+                  :EndWhile
+                  mat⍪←row
+              :EndWhile
             ⍝ ; als Trennzeichen für Übersetzungsvarianten
-              mat[;2]←{0=⍴⍵:'' ⋄ {(+/∧\⍵∊'; ')↓⍵}¨(1,1↓⍵=';')⊂⍵}¨mat[;2]
-              DB,←⊂mat
+              DB⍪←(dir,ref)mat
           :EndIf
       :EndWhile
      
      
     ∇
 
-      Übersetze←{
+    ∇ R←DB Übersetze wort;i
       ⍝ liefert Übersetzung für ⍵ aus Tabelle ⍺
-      ⍝ Falls Begriff nicht gefunden gibt es leeres Ergebnis,
-      ⍝ für mehrfach vorkommende Begriffe werden alle Übersetzungen geliefert.
-          ⍺[⍸⍺[;1]≡¨⊂⍵;2]
-      }
+      ⍝ ermittele Indices passender Begriffe
+     
+      i←⍸DB[;1]≡¨⊂,wort
+      :Select ≢i   ⍝ anzahl treffer?
+      :Case 0      ⍝ nix gefunden
+         ⍝ nachfrage / eingabe...
+          ⎕←'Keine Übersetzung gefunden. Nummer des zu ergänzenden Wörterbuchs eingeben? (0=keines,...)'
+          j←2⊃⎕VFI⍞
+          :If j>0
+           ⍝ eingabe begriffsübersetzung und in DB speichern
+          :Else
+              R←'***'
+          :EndIf
+      :Case 1      ⍝ 1 Treffer!
+          R←2⊃DB[⍬⍴i;]       ⍝ gleich als Ergebnis zurückgeben
+      :Else        ⍝ mehrere Treffer! Auswahl etc:
+          ⎕←'=== Es gibt mehrere Übersetzungsmöglichkeiten für Begriff "',wort,'":'
+          {(¯1+⍳≢⍵),[1.5]⍵}(⊂'Nicht übersetzen'),DB[i;2],⊂'DB ergänzen um neue Übersetzung'
+          j←2⊃⎕VFI⍞
+          :If j=0
+              R←'***'
+          :ElseIf j>≢i
+              R←ErgänzeDB wort
+              ⍝ hier auch berücksichtigen:
+              ⍝ auswahl DB und dann:
+              ⍝ als neuen Begriff eintragen
+              ⍝ als neue Möglichkeit an bestehenden Satz anfügen
+          :Else
+              R←i[j]⊃DB[;2]
+          :EndIf
+     
+        ⍝ auswahl
+      :EndSelect
+    ∇
+
+    ∇ res←DB gloss datei;zeile;tx;wort;wort∆
+      tx←1⊃⎕NGET datei 1
+      res←0 2⍴''
+      :For zeile :In tx
+          zeile←dxb(4×'\tx '≡4↑zeile)↓zeile
+          :For wort :In {(+\⍵=' ')⊆⍵}' ',zeile
+              wort←1↓wort  ⍝ blank weg
+              wort∆←DB Übersetze wort
+              res←res⍪wort wort∆
+          :EndFor
+      :EndFor
+    ∇
+
+
 
       hex←{⎕CT ⎕IO←0                          ⍝ Hexadecimal from decimal.
           ⍺←⊢                                 ⍝ no width specification.
@@ -58,19 +113,5 @@
           n←⍬⍴⍺,2*⌈2⍟2⌈16⍟1+⌈/|⍵              ⍝ default width.
           ↓[0]'0123456789abcdef'[(n/16)⊤⍵]    ⍝ character hex numbers.
       }
-
-    ∇ res←DB gloss datei;zeile;tx;wort;wort∆
-      tx←1⊃⎕NGET datei 1
-      res←''
-      :For zeile :In tx
-          zeile←dxb(4×'\tx '≡4↑zeile)↓zeile
-          :For wort :In {(+\⍵=' ')⊆⍵}' ',zeile
-              wort←1↓wort  ⍝ blank weg
-              wort∆←(1⊃DB)Übersetze wort
-              res←res,⊂wort∆
-          :EndFor
-      :EndFor
-     
-    ∇
 
 :EndNamespace
