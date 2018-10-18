@@ -1,6 +1,14 @@
 ﻿:Namespace Shoebox
 ⍝      DB←#.Shoebox.LeseDB'C:\GitHub\shoebox\.shsrc'
-⍝      DB gloss'C:\GitHub\shoebox\test.itx'
+⍝      DB #.Shoebox.gloss'C:\GitHub\shoebox\test.itx'
+⍝      DB[1 2 ;]#.Shoebox.Übersetze'son' '\me'
+⍝┌───────────────────────┬───────┬───────────────────────┐
+⍝│Klang; Ton; Laut; Kleie│3sPOSSm│Klang; Ton; Laut; Kleie│
+⍝└───────────────────────┴───────┴───────────────────────┘
+⍝      DB #.Shoebox.Übersetze'maisons' '\bk'
+⍝┌────────┐
+⍝│maison-s│
+⍝└────────┘
 
 
 ⍝ === VARIABLES ===
@@ -16,7 +24,8 @@
 
     (⎕IO ⎕ML ⎕WX)←1 1 3
 
-    ∇ DB←LeseDB name;txt;vec;vier;z;From;To;ref;j;mat;i;ctrl;AllIsWell
+    ∇ DB←LeseDB name;txt;vec;vier;z;From;To;ref;j;mat;i;ctrl;AllIsWell;col;row;typ;zeile;tags
+     
     ⍝ name=name der steuerdatei
       ⎕CY'dfns'    ⍝ kopiere dfns-workspace  (benötigt für dbx in "gloss")
       ctrl←1⊃⎕NGET name 1    ⍝ Textdatei einlesen...
@@ -30,19 +39,24 @@
               ref←4↓j⊃ctrl  ⍝ dateiname from to
               (ref From)←1↓¨{(+\⍵=' ')⊆⍵}ref
               vec←1⊃⎕NGET(dir,ref)1
-              vec←1↓vec  ⍝ simple: ignoriere erste zeile!
-              vier←4↑¨vec
-              z←∊'\'=1↑¨vier
-              tags←∪('\\[_a-z]*\s+'⎕S'&')z/vier
-              mat←(0,≢tags)⍴''  ⍝ sätze x tags
+              vec←(⌽∨\⌽0<≢¨vec~¨⊂' ',⎕AV[10])/vec
+              vec←((⊂'\_sh')≢¨4↑¨vec)/vec
+              z←⍸∊{('\'≠1↑⍵)∧0<≢⍵~' '}¨vec           ⍝ ermittle indices von zeile, die nicht mit \ beginnen und keine leerzeilen sind
+              vec[z-1]←vec[z-1],¨vec[z]              ⍝ dies sind fortsetzungszeilen! verknüpfe mit voriger zeile
+              vec←vec[(⍳⍴vec)~z]                     ⍝ und lösche eigene Inhalte der Zeile
+              z←∊'\'=1↑¨vec
+              tags←{(⌽∨\⌽⍵≠' ')/⍵}¨∪('\\[_a-z]*\s+'⎕S'&')z/vec
+⍝         mat←(0,≢tags)⍴''  ⍝ sätze x tags
+              mat←,[0.5]tags
               :While 0<≢vec
                   row←(≢tags)⍴''
-                  vec←(∨\0<≢¨vec)/vec ⍝ leerzeilen am dateianfangentfernen
-                  :While 0<≢1⊃vec
+                  vec←(∨\0<≢¨vec)/vec ⍝ leerzeilen am dateianfang entfernen
+                  :While 0<≢1⊃vec,⊂''
                       zeile←1⊃vec
                       typ←{(¯1+⍵⍳' ')↑⍵}zeile
                       col←tags⍳⊂typ
-                      row[col]←⊂(1+⍴typ)↓zeile
+                      row[col]←⊂{(⌽∨\⌽~⍵∊' ',⎕av[10])/⍵}(1+⍴typ)↓zeile
+                      vec←1↓vec
                   :EndWhile
                   mat⍪←row
               :EndWhile
@@ -50,13 +64,26 @@
               DB⍪←(dir,ref)mat
           :EndIf
       :EndWhile
-     
-     
+⍝
+⍝ 3 Gäste - 30€, jeder 10€
+⍝ rabatt: 5€ zurück
+⍝ jeder kd kriegt 1€, kellner 2€.
+⍝ also: jeder gast statt 10 nur 9€ ausgegeben, zusammen 27€. +2€ trinkgeld ist 29. wo ist der fehlende €?
+⍝
     ∇
 
-    ∇ R←DB Übersetze wort;i
+    ∇ R←DB Übersetze(wort returnTag);i
       ⍝ liefert Übersetzung für ⍵ aus Tabelle ⍺
       ⍝ ermittele Indices passender Begriffe
+      ⍝ DB Übersetze 'wort' '\me'
+              R←⍳0
+      :For tabelle :In DB[;2]
+          ⍝i←tabelle[;1]⍳⊂,wort
+          :If 0<≢ i ← ⍸ tabelle[;1]≡¨⊂,wort
+              R,←tabelle[i;tabelle[1;]⍳⊂returnTag]
+          :EndIf
+      :EndFor
+      :GoTo 0
      
       i←⍸DB[;1]≡¨⊂,wort
       :Select ≢i   ⍝ anzahl treffer?
@@ -95,7 +122,7 @@
       tx←1⊃⎕NGET datei 1
       res←0 2⍴''
       :For zeile :In tx
-          zeile←dxb(4×'\tx '≡4↑zeile)↓zeile
+          zeile←(4×'\tx '≡4↑zeile)↓zeile
           :For wort :In {(+\⍵=' ')⊆⍵}' ',zeile
               wort←1↓wort  ⍝ blank weg
               wort∆←DB Übersetze wort
