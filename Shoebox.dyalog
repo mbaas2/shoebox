@@ -1,6 +1,5 @@
 ﻿:Namespace Shoebox
 ⍝      DB←#.Shoebox.LeseDB'C:\GitHub\shoebox\.shsrc'
-⍝      DB #.Shoebox.gloss'C:\GitHub\shoebox\test.itx'
 ⍝      DB[1 2 ;]#.Shoebox.Übersetze'son' '\me'
 ⍝┌───────────────────────┬───────┬───────────────────────┐
 ⍝│Klang; Ton; Laut; Kleie│3sPOSSm│Klang; Ton; Laut; Kleie│
@@ -9,6 +8,18 @@
 ⍝┌────────┐
 ⍝│maison-s│
 ⍝└────────┘
+⍝
+⍝ DB #.Shoebox.Interlinearisiere'C:\GitHub\shoebox\test.itx'
+⍝ gibt INDEX ERROR, weil es in der Datei, in der maisons gefunden wird, kein \me-Tag gibt.
+⍝ Welches Tag gesucht werden soll, muß der Konfig-Datei entnommen werden!
+⍝ ⍺ für Interlin sollte wahrscheinlich eher Konfig-Datei als DB sein!
+⍝ Ebenso können wir der Konfigdatei entnehmen, welches Format "res" in Interlin haben soll.
+⍝ Beim nächsten Mal zu lösen!
+⍝ 
+⍝ Hausaufgaben:
+⍝ HV: VI-Syntax
+⍝ MB: Code-Syntax
+⍝ MB: VI installieren (SubDir  von Shoebox!)
 
 
 ⍝ === VARIABLES ===
@@ -17,6 +28,7 @@
     _,←'*** Shoebox-Versuche, Kapitel 1 ;-)' ''
     _,←,⊂'Ein Projekt des FRAPL-Meetups von Nadja & Harald Vajkonny und Michael Baas'
     Doc←_
+    ExtEditor←'c:\programme\vs code\code.exe $name -search="$suche"'
 
     ⎕ex '_'
 
@@ -55,13 +67,13 @@
                       zeile←1⊃vec
                       typ←{(¯1+⍵⍳' ')↑⍵}zeile
                       col←tags⍳⊂typ
-                      row[col]←⊂{(⌽∨\⌽~⍵∊' ',⎕av[10])/⍵}(1+⍴typ)↓zeile
+                      row[col]←⊂{(⌽∨\⌽~⍵∊' ',⎕AV[10])/⍵}(1+⍴typ)↓zeile
                       vec←1↓vec
                   :EndWhile
                   mat⍪←row
               :EndWhile
             ⍝ ; als Trennzeichen für Übersetzungsvarianten
-              DB⍪←(dir,ref)mat
+              DB⍪←(∊1 ⎕NPARTS dir,ref)mat
           :EndIf
       :EndWhile
 ⍝
@@ -72,21 +84,55 @@
 ⍝
     ∇
 
+    ∇ res←DB Interlinearisiere datei;zeilen;txt;ü;w;res;worte;wort
+      zeilen←1⊃⎕NGET datei 1
+     
+      :For txt :In 3↓¨((⊂'\tx ')≡¨4↑¨zeilen)/zeilen
+          worte←{(∊0<⍴¨⍵)/⍵}{(∨\⍵≠' ')/⍵}¨{(⍵=' ')⊂⍵}txt
+          res←(worte,[0.5]' ')⍪' '
+     
+          :For w :In ⍳≢worte
+          ⎕←⎕ucs 13
+              ⎕SE.Dyalog.Utils.disp res
+              ü←DB Übersetze(w⊃worte)'\me'
+              res[2 3;w]←∊¨worte[w] (ü)
+          :EndFor
+      :EndFor
+     
+     
+    ∇
+
+
+    ∇ ret←DB ErgänzeWort wort
+      d←1
+      :If 1<≢DB   ⍝ falls es mehr als 1 Datenbank gibt...
+          ⎕←'Welche Datenbank ergänzen?'
+          ⎕←'0 Abbrechen'
+          ⎕←(⍳≢DB),DB[;,1]
+          d←2⊃⎕VFI⍞
+      :EndIf
+      :If d=0 ⋄ →ret←0 ⋄ :EndIf
+      DB Übersetze wort'\_no'
+⍝ ext editor öffnen und nach Zeile mit Eintrag "\_no ###" suchen lassen!
+⍝ VI installieren?
+     
+    ∇
+
+
     ∇ R←DB Übersetze(wort returnTag);i
       ⍝ liefert Übersetzung für ⍵ aus Tabelle ⍺
       ⍝ ermittele Indices passender Begriffe
       ⍝ DB Übersetze 'wort' '\me'
-              R←⍳0
+      R←⍳0
       :For tabelle :In DB[;2]
-          ⍝i←tabelle[;1]⍳⊂,wort
-          :If 0<≢ i ← ⍸ tabelle[;1]≡¨⊂,wort
-              R,←tabelle[i;tabelle[1;]⍳⊂returnTag]
+          :If 0<≢i←⍸tabelle[;1]≡¨⊂,wort
+              R∪←tabelle[i;tabelle[1;]⍳⊂returnTag]
           :EndIf
       :EndFor
-      :GoTo 0
-     
-      i←⍸DB[;1]≡¨⊂,wort
-      :Select ≢i   ⍝ anzahl treffer?
+    ⍝ schrittweise wird R jetzt in Ergebnisliste umgewandelt:
+      R←∊R,¨';'     ⍝ mit ; als Trennzeichen alle Ergebnisse zusammenfügen (kann auch einzelne durch ; getrennte Ergebnisse aus einer Tabelle enthalten)
+      R←{(∊0<⍴¨⍵)/⍵}{(∨\~⍵∊'; ')/⍵}¨{(⍵=';')⊂⍵}';',R
+      :Select i←≢R   ⍝ anzahl treffer?
       :Case 0      ⍝ nix gefunden
          ⍝ nachfrage / eingabe...
           ⎕←'Keine Übersetzung gefunden. Nummer des zu ergänzenden Wörterbuchs eingeben? (0=keines,...)'
@@ -97,24 +143,18 @@
               R←'***'
           :EndIf
       :Case 1      ⍝ 1 Treffer!
-          R←2⊃DB[⍬⍴i;]       ⍝ gleich als Ergebnis zurückgeben
+          →0   ⍝ gleich als Ergebnis zurückgeben
       :Else        ⍝ mehrere Treffer! Auswahl etc:
           ⎕←'=== Es gibt mehrere Übersetzungsmöglichkeiten für Begriff "',wort,'":'
-          {(¯1+⍳≢⍵),[1.5]⍵}(⊂'Nicht übersetzen'),DB[i;2],⊂'DB ergänzen um neue Übersetzung'
+          {(¯1+⍳≢⍵),[1.5]⍵}(⊂'Nicht übersetzen'),R,⊂'DB ergänzen um neue Übersetzung(en)'
           j←2⊃⎕VFI⍞
           :If j=0
               R←'***'
           :ElseIf j>≢i
-              R←ErgänzeDB wort
-              ⍝ hier auch berücksichtigen:
-              ⍝ auswahl DB und dann:
-              ⍝ als neuen Begriff eintragen
-              ⍝ als neue Möglichkeit an bestehenden Satz anfügen
+              ret←DB ErgänzeDB wort
           :Else
-              R←i[j]⊃DB[;2]
+              R←j⊃R
           :EndIf
-     
-        ⍝ auswahl
       :EndSelect
     ∇
 
