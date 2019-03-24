@@ -1,5 +1,15 @@
 ﻿:Namespace Shoebox
-⍝      DB←#.Shoebox.LeseDB'C:\GitHub\shoebox\.shsrc'
+⍝
+⍝ neuer ablauf:
+⍝ ]load    C:\Git\shoebox\Shoebox.dyalog
+⍝ )cs #.Shoebox
+⍝ sb   ⍝ Hautproghramm 
+⍝ läuft auf ∘∘∘, dann: 
+⍝ DB Interlinearisiere'C:\Git\shoebox\Projekt frz-1\test.itx'
+⍝
+⍝
+⍝------Alte Notizen:
+⍝      DB←#.Shoebox.LeseDB'C:\Git\shoebox\.shsrc'
 ⍝      DB[1 2 ;]#.Shoebox.Übersetze'son' '\me'
 ⍝┌───────────────────────┬───────┬───────────────────────┐
 ⍝│Klang; Ton; Laut; Kleie│3sPOSSm│Klang; Ton; Laut; Kleie│
@@ -15,13 +25,19 @@
 ⍝ ⍺ für Interlin sollte wahrscheinlich eher Konfig-Datei als DB sein!
 ⍝ Ebenso können wir der Konfigdatei entnehmen, welches Format "res" in Interlin haben soll.
 ⍝ Beim nächsten Mal zu lösen!
-⍝ 
+⍝
+⍝ ⍝ vim +[lineno] filename
+⍝ vim +[lineno3] filename3 +"vsp +[lineno2] filename2" +"vsp +[lineno1] filename1"
+
 ⍝ Hausaufgaben:
-⍝ HV: VI-Syntax
-⍝ MB: Code-Syntax
-⍝ MB: VI installieren (SubDir  von Shoebox!)
+⍝ HV: ncruses-Vorstellung
+⍝ MB: ncurses interface aus dyalog?
 
 
+⍝ Konfig-Datei: \aln verarbeiten und aufgrund dessen den Ablauf steuern, dabei mbk-Character berücksichtigen
+⍝ vi-Einbindung bei Neueintrag oder Änderungen
+⍝ [G]UI
+⍝
 ⍝ === VARIABLES ===
 
     _←⍬
@@ -36,46 +52,94 @@
 
     (⎕IO ⎕ML ⎕WX)←1 1 3
 
-    ∇ DB←LeseDB name;txt;vec;vier;z;From;To;ref;j;mat;i;ctrl;AllIsWell;col;row;typ;zeile;tags
-     
-    ⍝ name=name der steuerdatei
+    ∇ sb;ctrl;j;DB;AllIsWell;ref;i;aktDir;CONFIG
+⍝ .shsrc im Projektpfad suchen
+⍝ "Projektpfad" ist entweder das aktuelle Verzeichnis oder die Umgebungsvariable shprj
       ⎕CY'dfns'    ⍝ kopiere dfns-workspace  (benötigt für dbx in "gloss")
-      ctrl←1⊃⎕NGET name 1    ⍝ Textdatei einlesen...
-      dir←1⊃⎕NPARTS name     ⍝ merke quellverzeichnis
-      AllIsWell←i←1
-      DB←0 2⍴''
-      :While AllIsWell
-          j←⍸(⊂'\fn',⍕i)≡¨4↑¨ctrl
-          i+←1
-          :If AllIsWell←×≢j
-              ref←4↓j⊃ctrl  ⍝ dateiname from to
-              (ref From)←1↓¨{(+\⍵=' ')⊆⍵}ref
-              vec←1⊃⎕NGET(dir,ref)1
-              vec←(⌽∨\⌽0<≢¨vec~¨⊂' ',⎕AV[10])/vec
-              vec←((⊂'\_sh')≢¨4↑¨vec)/vec
-              z←⍸∊{('\'≠1↑⍵)∧0<≢⍵~' '}¨vec           ⍝ ermittle indices von zeile, die nicht mit \ beginnen und keine leerzeilen sind
-              vec[z-1]←vec[z-1],¨vec[z]              ⍝ dies sind fortsetzungszeilen! verknüpfe mit voriger zeile
-              vec←vec[(⍳⍴vec)~z]                     ⍝ und lösche eigene Inhalte der Zeile
-              z←∊'\'=1↑¨vec
-              tags←{(⌽∨\⌽⍵≠' ')/⍵}¨∪('\\[_a-z]*\s+'⎕S'&')z/vec
-⍝         mat←(0,≢tags)⍴''  ⍝ sätze x tags
-              mat←,[0.5]tags
-              :While 0<≢vec
-                  row←(≢tags)⍴''
-                  vec←(∨\0<≢¨vec)/vec ⍝ leerzeilen am dateianfang entfernen
-                  :While 0<≢1⊃vec,⊂''
-                      zeile←1⊃vec
-                      typ←{(¯1+⍵⍳' ')↑⍵}zeile
-                      col←tags⍳⊂typ
-                      row[col]←⊂{(⌽∨\⌽~⍵∊' ',⎕AV[10])/⍵}(1+⍴typ)↓zeile
-                      vec←1↓vec
-                  :EndWhile
-                  mat⍪←row
-              :EndWhile
-            ⍝ ; als Trennzeichen für Übersetzungsvarianten
-              DB⍪←(∊1 ⎕NPARTS dir,ref)mat
+     
+      aktDir←1⊃1 ⎕NPARTS''   ⍝ akt. Verzeichnis beim Aufruf
+     
+      :If ~⎕NEXISTS aktDir,'.shsrc'  ⍝ gibt dort eine Konfig-Datei?
+          aktDir←2 ⎕NQ'.' 'GetEnvironment' 'shprj'    ⍝ suche nach Umgebungsvariable
+          :If ~⎕NEXISTS aktDir,'.shsrc'  ⍝ gibt dort eine Konfig-Datei?
+              ⎕←'Keine .shsrc-Datei gefunden - Pech gehabt!'
+              →0
           :EndIf
+      :EndIf
+     
+      ctrl←1⊃⎕NGET(aktDir,'.shsrc')1    ⍝ Textdatei einlesen...
+     
+      AllIsWell←i←1
+      DB←2 0⍴''
+      :While AllIsWell
+          j←{0=≢⍵:0 ⋄ ⍵}⍸(⊂'\fn',⍕i)≡¨4↑¨ctrl
+          :If AllIsWell←×j
+              ref←j⊃ctrl  ⍝ dateiname from to
+    ⍝          ref←{(∨\⍵≠' ')/⍵}(ref⍳' ')↓ref
+    ⍝               APL↑ vs. Regex ↓↓ (APL sucht ersten Blank und verwertet alles danach, rx verarbeitet namen ohne blanks)
+              ref←1⊃('\\fn[0-9]*\s*(.*?)\s'⎕S'\1')ref
+              :If './'≡2↑ref ⋄ :OrIf '.\'≡2↑ref ⋄ ref←aktDir,2↓ref ⋄ :EndIf
+     
+              DB←(2,i⌈≢⍉DB)↑DB
+              DB[1;i]←⊂ref
+              DB[2;i]←⊂LeseDB ref
+              ⍝⎕←'=== LeseDB ',name
+          :EndIf
+          i+←1
       :EndWhile
+     
+      CONFIG←⍬
+⍝ Konfiguration
+⍝ [1] = morpheme break, \mbk der steuerdatei
+   ⍝   CONFIG←ctrl GetConfig'mbk' '-'
+      ∘∘∘
+    ∇
+
+    ∇ r←cfg GetConfig(tag r)
+     
+    ∇
+
+    ∇ mat←LeseDB name;txt;vec;vier;z;From;To;ref;j;mat;i;ctrl;AllIsWell;col;row;typ;zeile;tags;vbs;vbx;fz;iv;lz;v;v∆;vmax;lineno;colIdx
+      ⎕←'=== LeseDB ',name
+      vec←1⊃⎕NGET name 1
+⍝      vec←(⌽∨\⌽0<≢¨vec~¨⊂' ',⎕AV[10])/vec
+⍝      vec←((⊂'\_sh')≢¨4↑¨vec)/vec
+      z←⍸∊{('\'≠1↑⍵)∧0<≢⍵~' '}¨vec           ⍝ ermittle indices von zeilen, die nicht mit \ beginnen und keine leerzeilen sind
+      lineno←⍳⍴vec
+      vec[z-1]←vec[z-1],¨vec[z]              ⍝ dies sind fortsetzungszeilen! verknüpfe mit voriger zeile
+      lineno~←z
+      vec←vec[(⍳⍴vec)~z]                     ⍝ und lösche eigene Inhalte der Zeile
+      vec←1↓vec ⋄ lineno←1↓lineno  ⍝ verhindere verarbeitung zeile 0
+      z←∊'\'=1↑¨vec
+      tags←({(⌽∨\⌽⍵≠' ')/⍵}¨∪('\\[_a-z]*\s+'⎕S'&')z/vec),⊂''
+      colIdx←⍴tags
+      ⍝         mat←(0,≢tags)⍴''  ⍝ sätze x tags
+      mat←,[0.5]tags
+      fz←~lz←0=≢¨vec    ⍝ Zeilen mit Inhalt
+      iv←⍳≢vec
+      v←0
+      vmax←≢vec
+     
+      :While vmax≥(v←v+1)
+⍝          ⎕←'v=',v
+          row←(≢tags)⍴''
+          vbs←⍬⍴⍸fz∧v≤iv       ⍝ Anfang des Blocks
+          vbx←vmax{⍵=0:⍺ ⋄ ⍵}⍬⍴⍸lz∧vbs<iv  ⍝ Ende des Blocks ist nächste Leerzeile-1
+⍝          'vbs/vbx=',vbs,vbx
+          row[colIdx]←vbs⊃lineno ⍝ Dateiposition dieses Blocks
+           ⍝TODO: vermeide Verarbeitung Zeile0!
+          :For v∆ :In (vbs-1)+⍳1+vbx-vbs  ⍝TODO: läuft ggf. auch in letzte Zeile! :(
+              :If ∨/~(⎕ucs zeile←v∆⊃vec)∊9 32  ⍝ keine tabs oder blanks
+                  typ←{(¯1+⍵⍳' ')↑⍵}zeile
+                  col←tags⍳⊂typ
+                  row[col]←⊂{(⌽∨\⌽~⍵∊' ',⎕AV[10])/⍵}(1+⍴typ)↓zeile
+              :EndIf
+          :EndFor
+          mat⍪←row
+          v←vbx
+ ⍝         ⎕←'v←',v
+      :EndWhile
+            ⍝ ; als Trennzeichen für Übersetzungsvarianten
 ⍝
 ⍝ 3 Gäste - 30€, jeder 10€
 ⍝ rabatt: 5€ zurück
@@ -92,10 +156,10 @@
           res←(worte,[0.5]' ')⍪' '
      
           :For w :In ⍳≢worte
-          ⎕←⎕ucs 13
+              ⎕←⎕UCS 13
               ⎕SE.Dyalog.Utils.disp res
               ü←DB Übersetze(w⊃worte)'\me'
-              res[2 3;w]←∊¨worte[w] (ü)
+              res[2 3;w]←∊¨worte[w](ü)
           :EndFor
       :EndFor
      
@@ -119,12 +183,13 @@
     ∇
 
 
-    ∇ R←DB Übersetze(wort returnTag);i
+    ∇ R←DB Übersetze(wort returnTag);i;j;ret;lineno;m;tabelle;menu
       ⍝ liefert Übersetzung für ⍵ aus Tabelle ⍺
       ⍝ ermittele Indices passender Begriffe
       ⍝ DB Übersetze 'wort' '\me'
       R←⍳0
-      :For tabelle :In DB[;2]
+     again:
+      :For tabelle :In DB[2;]
           :If 0<≢i←⍸tabelle[;1]≡¨⊂,wort
               R∪←tabelle[i;tabelle[1;]⍳⊂returnTag]
           :EndIf
@@ -146,12 +211,24 @@
           →0   ⍝ gleich als Ergebnis zurückgeben
       :Else        ⍝ mehrere Treffer! Auswahl etc:
           ⎕←'=== Es gibt mehrere Übersetzungsmöglichkeiten für Begriff "',wort,'":'
-          {(¯1+⍳≢⍵),[1.5]⍵}(⊂'Nicht übersetzen'),R,⊂'DB ergänzen um neue Übersetzung(en)'
+          ⎕←menu←{(¯1+⍳≢⍵),[1.5]⍵}(⊂'Nicht übersetzen'),R,⊂'DB ergänzen um neue Übersetzung(en)'
           j←2⊃⎕VFI⍞
           :If j=0
               R←'***'
-          :ElseIf j>≢i
-              ret←DB ErgänzeDB wort
+          :ElseIf j=≢menu
+              lineno←⍳0
+              :For m :In DB[2;]
+                  j←(m⍪1)[m[;1]⍳⊂wort;¯1↑⍴m]
+                  lineno,←j
+              :EndFor
+     
+              lineno ErgänzeDB DB[1;]
+              ⎕←'Bitte Eingabe 1 zum erneuten Einlesen der DB oder 0 zum direkten Fortsetzen...'
+              j←2⊃⎕VFI⍞
+              :For m :In ⍳¯1↑⍴DB
+                  DB[2;m]←⊂LeseDB(m⊃DB[1;])     ⍝ TODO: alles nochmals einlesen
+              :EndFor
+              →again
           :Else
               R←j⊃R
           :EndIf
@@ -171,7 +248,23 @@
       :EndFor
     ∇
 
-
+    ∇ lineno ErgänzeDB dateien;cmd;i;vsp;z
+      :If (,'W')≡3⊃'.'⎕WG'aplversion'
+⍝ TODO: konfigurierbar!
+          cmd←'C:\Program Files (x86)\Vim\vim81\vim.exe '
+⍝ vim +6 file1 +"sp +3 file2".
+⍝ vim +[lineno3] filename3 +"vsp +[lineno2] filename2" +"vsp +[lineno1] filename1"
+          :For i :In ⌽⍳≢lineno
+              z←i<≢lineno
+              cmd←cmd,(z/'+"vsp '),('+',⍕lineno[i]),' ',(i⊃dateien),(z/'"'),' '
+          :EndFor
+⍝          cmd←¯6↓cmd
+          ⎕CMD ⎕←cmd'normal'
+          ∘∘∘
+      :Else
+          ⎕SH'vim ',∊(⊆dateien),¨' '
+      :EndIf
+    ∇
 
       hex←{⎕CT ⎕IO←0                          ⍝ Hexadecimal from decimal.
           ⍺←⊢                                 ⍝ no width specification.
