@@ -3,9 +3,9 @@
 ⍝ neuer ablauf:
 ⍝ ]load    C:\Git\shoebox\Shoebox.dyalog
 ⍝ )cs #.Shoebox
-⍝ sb   ⍝ Hautproghramm 
-⍝ läuft auf ∘∘∘, dann: 
-⍝ DB Interlinearisiere'C:\Git\shoebox\Projekt frz-1\test.itx'
+⍝ sb   ⍝ Hautproghramm
+⍝ läuft auf ∘∘∘, dann:
+⍝ DB Interlinearisiere'C:\Git\shoebox\Projekt_frz-1\test.itx'
 ⍝
 ⍝
 ⍝------Alte Notizen:
@@ -19,7 +19,7 @@
 ⍝│maison-s│
 ⍝└────────┘
 ⍝
-⍝ DB #.Shoebox.Interlinearisiere'C:\GitHub\shoebox\test.itx'
+⍝ boxes #.Shoebox.Interlinearisiere'C:\Git\shoebox\Projekt_frz-1\test.itx'
 ⍝ gibt INDEX ERROR, weil es in der Datei, in der maisons gefunden wird, kein \me-Tag gibt.
 ⍝ Welches Tag gesucht werden soll, muß der Konfig-Datei entnommen werden!
 ⍝ ⍺ für Interlin sollte wahrscheinlich eher Konfig-Datei als DB sein!
@@ -52,7 +52,7 @@
 
     (⎕IO ⎕ML ⎕WX)←1 1 3
 
-    ∇ sb;ctrl;j;DB;AllIsWell;ref;i;aktDir;CONFIG
+    ∇ sb;ctrl;j;DB;AllIsWell;ref;i;aktDir;CONFIG;fnz;f
 ⍝ .shsrc im Projektpfad suchen
 ⍝ "Projektpfad" ist entweder das aktuelle Verzeichnis oder die Umgebungsvariable shprj
       ⎕CY'dfns'    ⍝ kopiere dfns-workspace  (benötigt für dbx in "gloss")
@@ -67,36 +67,42 @@
           :EndIf
       :EndIf
      
-      ctrl←1⊃⎕NGET(aktDir,'.shsrc')1    ⍝ Textdatei einlesen...
+      ctrl←1⊃⎕NGET(aktDir,'.shsrc')1    ⍝ Konfigurationdatei einlesen und verarbeiten
      
-      AllIsWell←i←1
-      DB←2 0⍴''
-      :While AllIsWell
-          j←{0=≢⍵:0 ⋄ ⍵}⍸(⊂'\fn',⍕i)≡¨4↑¨ctrl
-          :If AllIsWell←×j
-              ref←j⊃ctrl  ⍝ dateiname from to
-    ⍝          ref←{(∨\⍵≠' ')/⍵}(ref⍳' ')↓ref
-    ⍝               APL↑ vs. Regex ↓↓ (APL sucht ersten Blank und verwertet alles danach, rx verarbeitet namen ohne blanks)
-              ref←1⊃('\\fn[0-9]*\s*(.*?)\s'⎕S'\1')ref
-              :If './'≡2↑ref ⋄ :OrIf '.\'≡2↑ref ⋄ ref←aktDir,2↓ref ⋄ :EndIf
+    ⍝ breakChar = morpheme break, \mbk der steuerdatei
+      breakChar←{0=≢⍵:'-' ⋄ ⍵}ctrl GetConfig'mbk'
      
-              DB←(2,i⌈≢⍉DB)↑DB
-              DB[1;i]←⊂ref
-              DB[2;i]←⊂LeseDB ref
-              ⍝⎕←'=== LeseDB ',name
-          :EndIf
-          i+←1
+      fnz←('\\fn(\d+)\s(.*)'⎕S'\1:\2')ctrl
+      fn←∊{2⊃⎕VFI(¯1+⍵⍳':')↑⍵}¨fnz
+      boxes←(3,≢fn)⍴'' ⋄ j←1
+      :For f :In fnz
+          i←{2⊃⎕VFI(¯1+⍵⍳':')↑⍵}f
+          boxes[1;j]←i
+          boxes[2;j]←⊂{(⍵⍳':')↓⍵}f
+          j+←1
+      :EndFor
+     
+      aln←0 5⍴' '
+      :While (≢ctrl)≥i←(5↑¨ctrl)⍳⊂'\aln '
+          aln⍪←{(⍵=' ')⊂⍵}4↓i⊃ctrl
+          ctrl[i]←⊂''
       :EndWhile
      
-      CONFIG←⍬
-⍝ Konfiguration
-⍝ [1] = morpheme break, \mbk der steuerdatei
-   ⍝   CONFIG←ctrl GetConfig'mbk' '-'
+     
+     
+      :For i :In ⍳¯1↑⍴boxes
+          ref←2⊃boxes[;i]
+          :If './'≡2↑ref ⋄ :OrIf '.\'≡2↑ref ⋄ ref←aktDir,2↓ref ⋄ :EndIf
+          boxes[3;i]←⊂LeseDB ref
+              ⍝⎕←'=== LeseDB ',name
+      :EndFor
+     
       ∘∘∘
     ∇
 
-    ∇ r←cfg GetConfig(tag r)
-     
+    ∇ r←cfg GetConfig tag
+      i←((2+⍴tag)↑¨cfg)⍳⊂'\',tag,' '
+      r←i⊃cfg,⊂''
     ∇
 
     ∇ mat←LeseDB name;txt;vec;vier;z;From;To;ref;j;mat;i;ctrl;AllIsWell;col;row;typ;zeile;tags;vbs;vbx;fz;iv;lz;v;v∆;vmax;lineno;colIdx
@@ -129,7 +135,7 @@
           row[colIdx]←vbs⊃lineno ⍝ Dateiposition dieses Blocks
            ⍝TODO: vermeide Verarbeitung Zeile0!
           :For v∆ :In (vbs-1)+⍳1+vbx-vbs  ⍝TODO: läuft ggf. auch in letzte Zeile! :(
-              :If ∨/~(⎕ucs zeile←v∆⊃vec)∊9 32  ⍝ keine tabs oder blanks
+              :If ∨/~(⎕UCS zeile←v∆⊃vec)∊9 32  ⍝ keine tabs oder blanks
                   typ←{(¯1+⍵⍳' ')↑⍵}zeile
                   col←tags⍳⊂typ
                   row[col]←⊂{(⌽∨\⌽~⍵∊' ',⎕AV[10])/⍵}(1+⍴typ)↓zeile
@@ -148,7 +154,7 @@
 ⍝
     ∇
 
-    ∇ res←DB Interlinearisiere datei;zeilen;txt;ü;w;res;worte;wort
+    ∇ res←boxes Interlinearisiere datei;zeilen;txt;ü;w;res;worte;wort
       zeilen←1⊃⎕NGET datei 1
      
       :For txt :In 3↓¨((⊂'\tx ')≡¨4↑¨zeilen)/zeilen
@@ -158,7 +164,7 @@
           :For w :In ⍳≢worte
               ⎕←⎕UCS 13
               ⎕SE.Dyalog.Utils.disp res
-              ü←DB Übersetze(w⊃worte)'\me'
+              ü←boxes Übersetze(w⊃worte)'\me'
               res[2 3;w]←∊¨worte[w](ü)
           :EndFor
       :EndFor
@@ -167,29 +173,30 @@
     ∇
 
 
-    ∇ ret←DB ErgänzeWort wort
+    ∇ ret←boxes ErgänzeWort wort
       d←1
-      :If 1<≢DB   ⍝ falls es mehr als 1 Datenbank gibt...
-          ⎕←'Welche Datenbank ergänzen?'
+      :If 1<¯1↑⍴boxes   ⍝ falls es mehr als 1 Datenbank gibt...
+          ⎕←'Welche Box ergänzen?'
           ⎕←'0 Abbrechen'
-          ⎕←(⍳≢DB),DB[;,1]
+          ⎕←⍉boxes[1 2;]
           d←2⊃⎕VFI⍞
       :EndIf
       :If d=0 ⋄ →ret←0 ⋄ :EndIf
-      DB Übersetze wort'\_no'
+      ∘∘∘   ⍝ TODO: was genau soll hier geschehen? muss evtl. an neuen Aufbau (boxes stat DB) angepasst werden!
+      boxes Übersetze wort'\_no'
 ⍝ ext editor öffnen und nach Zeile mit Eintrag "\_no ###" suchen lassen!
 ⍝ VI installieren?
      
     ∇
 
 
-    ∇ R←DB Übersetze(wort returnTag);i;j;ret;lineno;m;tabelle;menu
+    ∇ R←boxes Übersetze(wort returnTag);i;j;ret;lineno;m;tabelle;menu
       ⍝ liefert Übersetzung für ⍵ aus Tabelle ⍺
       ⍝ ermittele Indices passender Begriffe
-      ⍝ DB Übersetze 'wort' '\me'
+      ⍝ boxes Übersetze 'wort' '\me'
      again:
       R←⍳0
-      :For tabelle :In DB[2;]
+      :For tabelle :In boxes[3;]
           :If 0<≢i←⍸tabelle[;1]≡¨⊂,wort
               R∪←tabelle[i;tabelle[1;]⍳⊂returnTag]
           :EndIf
@@ -217,16 +224,16 @@
               R←'***'
           :ElseIf (j+1)=≢menu
               lineno←⍳0
-              :For m :In DB[2;]
+              :For m :In boxes[3;]
                   j←(m⍪1)[m[;1]⍳⊂wort;¯1↑⍴m]
                   lineno,←j
               :EndFor
      
-              lineno ErgänzeDB DB[1;]
+              lineno ErgänzeDB boxes[2;]
               ⎕←'Bitte Eingabe 1 zum erneuten Einlesen der DB oder 0 zum direkten Fortsetzen...'
-              j←2⊃⎕VFI⍞         
-              :For m :In ⍳¯1↑⍴DB
-                  DB[2;m]←⊂LeseDB(m⊃DB[1;])   
+              j←2⊃⎕VFI⍞
+              :For m :In ⍳¯1↑⍴boxes
+                  boxes[3;m]←⊂LeseDB(m⊃boxes[2;])
               :EndFor
               →again
           :Else
@@ -235,14 +242,14 @@
       :EndSelect
     ∇
 
-    ∇ res←DB gloss datei;zeile;tx;wort;wort∆
+    ∇ res←box gloss datei;zeile;tx;wort;wort∆
       tx←1⊃⎕NGET datei 1
       res←0 2⍴''
       :For zeile :In tx
           zeile←(4×'\tx '≡4↑zeile)↓zeile
           :For wort :In {(+\⍵=' ')⊆⍵}' ',zeile
               wort←1↓wort  ⍝ blank weg
-              wort∆←DB Übersetze wort
+              wort∆←box Übersetze wort
               res←res⍪wort wort∆
           :EndFor
       :EndFor
