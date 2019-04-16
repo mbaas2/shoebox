@@ -187,8 +187,8 @@
       ⍝ liefert Übersetzung für ⍵ aus Tabelle ⍺
       ⍝ ermittele Indices passender Begriffe
       ⍝ DB Übersetze 'wort' '\me'
-      R←⍳0
      again:
+      R←⍳0
       :For tabelle :In DB[2;]
           :If 0<≢i←⍸tabelle[;1]≡¨⊂,wort
               R∪←tabelle[i;tabelle[1;]⍳⊂returnTag]
@@ -215,7 +215,7 @@
           j←2⊃⎕VFI⍞
           :If j=0
               R←'***'
-          :ElseIf j=≢menu
+          :ElseIf (j+1)=≢menu
               lineno←⍳0
               :For m :In DB[2;]
                   j←(m⍪1)[m[;1]⍳⊂wort;¯1↑⍴m]
@@ -224,9 +224,9 @@
      
               lineno ErgänzeDB DB[1;]
               ⎕←'Bitte Eingabe 1 zum erneuten Einlesen der DB oder 0 zum direkten Fortsetzen...'
-              j←2⊃⎕VFI⍞
+              j←2⊃⎕VFI⍞         
               :For m :In ⍳¯1↑⍴DB
-                  DB[2;m]←⊂LeseDB(m⊃DB[1;])     ⍝ TODO: alles nochmals einlesen
+                  DB[2;m]←⊂LeseDB(m⊃DB[1;])   
               :EndFor
               →again
           :Else
@@ -260,7 +260,6 @@
           :EndFor
 ⍝          cmd←¯6↓cmd
           ⎕CMD ⎕←cmd'normal'
-          ∘∘∘
       :Else
           ⎕SH'vim ',∊(⊆dateien),¨' '
       :EndIf
